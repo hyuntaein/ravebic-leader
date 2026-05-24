@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAVEBIC 팀장 전용</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb;font-family:Arial,'Malgun Gothic',sans-serif;color:#10213f}.wrap{max-width:980px;margin:0 auto;padding:18px}.card{background:#fff;border:1px solid #cfe0f8;border-radius:22px;padding:20px;margin:14px 0;box-shadow:0 8px 24px rgba(15,23,42,.06)}h1{margin:0;color:#0b3b78;font-size:30px}h2{margin:0 0 10px;color:#123f7a}.sub{color:#64748b;margin-top:6px;line-height:1.5}.login{max-width:430px;margin:70px auto}input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:13px;font-size:16px;margin:6px 0}button{border:0;border-radius:13px;padding:13px 16px;font-weight:900;cursor:pointer}.blue{background:#2563eb;color:#fff}.green{background:#16a34a;color:#fff}.gray{background:#e5e7eb;color:#111827}.red{background:#ef4444;color:#fff}.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.badge{display:inline-block;padding:8px 11px;border-radius:999px;font-size:13px;font-weight:900;margin:4px}.badge.total{background:#e0f2fe;color:#075985}.badge.ok{background:#dcfce7;color:#166534}.badge.miss{background:#fee2e2;color:#991b1b}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px solid #e2e8f0;padding:10px;text-align:left;vertical-align:top}th{background:#eaf4ff;color:#0b3b77}.row-ok{background:#ecfdf5}.row-miss{background:#fef2f2}.msg{border:1px solid #fed7aa;background:#fff7ed;border-radius:14px;padding:12px;margin:8px 0;line-height:1.55}.hidden{display:none}.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}@media(max-width:760px){.wrap{padding:10px}h1{font-size:25px}table{font-size:12px}}
+</style>
+</head>
+<body>
+<div id="loginBox" class="login card">
+  <h1>RAVEBIC 팀장 전용</h1>
+  <div class="sub">팀장명과 PIN을 입력하세요.</div>
+  <input id="leaderName" placeholder="팀장명 예: 박승현">
+  <input id="leaderPin" type="password" placeholder="PIN 예: 1111">
+  <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:800">
+    <input id="rememberLeader" type="checkbox" style="width:20px;height:20px;margin:0"> 이름/PIN 기억하기
+  </label>
+  <button class="blue" style="width:100%" onclick="leaderLogin()">팀장 로그인</button>
+  <div id="loginMsg" class="sub"></div>
+</div>
+
+<div id="app" class="wrap hidden">
+  <div class="card">
+    <div class="topbar">
+      <div><h1>RAVEBIC 팀장 전용</h1><div class="sub"><b id="leaderTitle"></b> 팀장님 전용 현황입니다.</div></div>
+      <button class="red" onclick="logout()">로그아웃</button>
+    </div>
+    <div id="conn" class="sub">Firebase 연결 중...</div>
+  </div>
+
+  <div class="card">
+    <div class="topbar"><h2>오늘 제출현황</h2><button class="gray" onclick="loadAll()">새로고침</button></div>
+    <div id="todaySummary"></div>
+    <div style="overflow:auto;margin-top:10px"><table><thead><tr><th>브랜드</th><th>예정 점포</th><th>제출상태</th><th>제출시간</th><th>비고</th></tr></thead><tbody id="todayTbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>이번 주 현황</h2>
+    <div id="weekSummary"></div>
+    <div style="overflow:auto;margin-top:10px"><table><thead id="weekThead"></thead><tbody id="weekTbody"></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2>관리자 메세지 / 보완요청함</h2>
+    <div id="messageBox">불러오는 중...</div>
+  </div>
+
+  <div class="card">
+    <h2>내 제출내역</h2>
+    <div style="overflow:auto"><table><thead><tr><th>제출시간</th><th>점포명</th><th>브랜드</th><th>업무</th><th>상태</th></tr></thead><tbody id="submitTbody"></tbody></table></div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig={apiKey:"AIzaSyBmvE4sKxvO0OWTz2Nt70o-RuCKBTPds_0",authDomain:"ravebic-app.firebaseapp.com",projectId:"ravebic-app",storageBucket:"ravebic-app.firebasestorage.app",messagingSenderId:"44012584810",appId:"1:44012584810:web:540cd8aba9ca8bbf2baf13",measurementId:"G-EEN6GM72JT"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+let currentLeader="", schedules=[], submissions=[], messages=[];
+function esc(v){return String(v||'').replace(/[&<>'"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s]));}
+function dtOf(r){return r.submittedAt&&r.submittedAt.toDate?r.submittedAt.toDate():new Date(r.submittedAtText||r.date||0)}
+function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function startOfWeek(d){const x=new Date(d);const day=x.getDay();const diff=day===0?-6:1-day;x.setDate(x.getDate()+diff);x.setHours(0,0,0,0);return x}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function cleanStore(v){return String(v||'').replace(/^\s*\d{2,5}\s*(?:노\s*)?/i,'').replace(/^\s*노\s+/i,'').replace(/\s+/g,' ').trim()}
+function storeKey(v){return cleanStore(v).replace(/\s+/g,'').replace(/[·ㆍ\.\-_/]/g,'').trim()}
+function brandShort(v){return v==='세븐일레븐'?'세븐':(v||'')}
+
+async function leaderLogin(){
+ const name=document.getElementById('leaderName').value.trim(), pin=document.getElementById('leaderPin').value.trim(), msg=document.getElementById('loginMsg');
+ if(!name||!pin){msg.textContent='팀장명과 PIN을 입력하세요.';return}
+ try{
+  const doc=await db.collection('staffPins').doc(name).get();
+  if(!doc.exists){msg.textContent='등록되지 않은 이름입니다.';return}
+  const data=doc.data()||{};
+  if(String(data.pin||'')!==pin){msg.textContent='PIN이 맞지 않습니다.';return}
+  currentLeader=name;
+  if(document.getElementById('rememberLeader').checked){localStorage.setItem('ravebicLeaderName',name);localStorage.setItem('ravebicLeaderPin',pin)}else{localStorage.removeItem('ravebicLeaderName');localStorage.removeItem('ravebicLeaderPin')}
+  document.getElementById('loginBox').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('leaderTitle').textContent=currentLeader;
+  await loadAll();
+ }catch(e){msg.textContent='로그인 오류: '+(e.message||e)}
+}
+function logout(){currentLeader="";document.getElementById('app').classList.add('hidden');document.getElementById('loginBox').classList.remove('hidden')}
+
+async function loadAll(){
+ document.getElementById('conn').textContent='데이터 불러오는 중...';
+ try{
+  const [s1,s2,s3]=await Promise.all([db.collection('teamSchedules').get(),db.collection('submissions').get(),db.collection('adminMessages').where('targetName','==',currentLeader).get()]);
+  schedules=[];s1.forEach(doc=>{const d=doc.data()||{};if(d.active!==false&&String(d.leader||'').trim()===currentLeader){d.id=doc.id;d.store=cleanStore(d.store||'');schedules.push(d)}});
+  const best={};schedules.forEach(r=>{const key=[r.scheduleDate||'',r.brand||'',storeKey(r.store||'')].join('|');const old=best[key];const cur=String(r.updatedAtText||r.createdAtText||r.runId||''), ot=old?String(old.updatedAtText||old.createdAtText||old.runId||''):'';if(!old||cur>=ot)best[key]=r});
+  schedules=Object.values(best).sort((a,b)=>String(a.scheduleDate||'').localeCompare(String(b.scheduleDate||''))||Number(a.orderIndex||999999)-Number(b.orderIndex||999999));
+  submissions=[];s2.forEach(doc=>{const d=doc.data()||{};if(String(d.name||'').trim()===currentLeader)submissions.push({id:doc.id,...d})});submissions.sort((a,b)=>dtOf(b)-dtOf(a));
+  messages=[];s3.forEach(doc=>messages.push({id:doc.id,...doc.data()}));messages.sort((a,b)=>String(b.createdAtText||'').localeCompare(String(a.createdAtText||'')));
+  document.getElementById('conn').textContent='연결 성공 · 예정 '+schedules.length+'건 / 제출 '+submissions.length+'건';
+  renderToday();renderWeek();renderMessages();renderSubmissions();
+ }catch(e){document.getElementById('conn').textContent='데이터 불러오기 실패: '+(e.message||e)}
+}
+function findSub(sc){const date=sc.scheduleDate, sk=storeKey(sc.store||''), brand=sc.brand||'';return submissions.find(r=>ymd(dtOf(r))===date&&(!brand||String(r.brand||'')===brand)&&(storeKey(r.store||'')===sk||storeKey(r.store||'').includes(sk)||sk.includes(storeKey(r.store||''))))}
+function renderToday(){
+ const today=ymd(new Date()), rows=schedules.filter(r=>String(r.scheduleDate||'')===today);let submitted=0;
+ document.getElementById('todayTbody').innerHTML=rows.length?rows.map(r=>{const sub=findSub(r);if(sub)submitted++;return '<tr class="'+(sub?'row-ok':'row-miss')+'"><td>'+esc(brandShort(r.brand))+'</td><td><b>'+esc(r.store)+'</b></td><td>'+(sub?'제출완료':'미제출')+'</td><td>'+(sub?esc(dtOf(sub).toLocaleString()):'-')+'</td><td>'+(sub?esc(sub.status||'미확인'):'서류 제출 필요')+'</td></tr>'}).join(''):'<tr><td colspan="5">오늘 예정 일정이 없습니다.</td></tr>';
+ document.getElementById('todaySummary').innerHTML='<span class="badge total">예정 '+rows.length+'건</span><span class="badge ok">제출 '+submitted+'건</span><span class="badge miss">미제출 '+Math.max(0,rows.length-submitted)+'건</span>';
+}
+function renderWeek(){
+ const start=startOfWeek(new Date()), days=[];for(let i=0;i<7;i++)days.push(ymd(addDays(start,i)));
+ document.getElementById('weekThead').innerHTML='<tr>'+days.map(d=>'<th>'+d.slice(5)+'</th>').join('')+'<th>총 예정</th><th>총 제출</th><th>총 미제출</th></tr>';
+ let tp=0,ts=0;const cells=days.map(d=>{const pr=schedules.filter(r=>String(r.scheduleDate||'')===d);const sub=pr.filter(r=>findSub(r)).length;tp+=pr.length;ts+=sub;return '<td class="'+(pr.length>sub?'row-miss':'row-ok')+'">'+sub+' / '+pr.length+'</td>'}).join('');
+ document.getElementById('weekSummary').innerHTML='<span class="badge total">주간 예정 '+tp+'건</span><span class="badge ok">주간 제출 '+ts+'건</span><span class="badge miss">주간 미제출 '+Math.max(0,tp-ts)+'건</span>';
+ document.getElementById('weekTbody').innerHTML='<tr>'+cells+'<td>'+tp+'</td><td>'+ts+'</td><td>'+Math.max(0,tp-ts)+'</td></tr>';
+}
+async function markMessageRead(id){await db.collection('adminMessages').doc(id).update({read:true,status:'read',readAt:firebase.firestore.FieldValue.serverTimestamp(),readAtText:new Date().toISOString()});await loadAll()}
+function renderMessages(){const box=document.getElementById('messageBox');if(!messages.length){box.innerHTML='<div class="sub">관리자 메세지가 없습니다.</div>';return}box.innerHTML=messages.map(m=>{const read=m.read===true||m.status==='read';return '<div class="msg"><div><b>'+(read?'읽음':'안읽음')+'</b> · '+esc(m.createdAtText||'')+'</div><div style="white-space:pre-wrap;margin-top:6px">'+esc(m.message||'')+'</div>'+(!read?'<div class="btns"><button class="green" onclick="markMessageRead(\''+m.id+'\')">읽음 처리</button></div>':'')+'</div>'}).join('')}
+function renderSubmissions(){const tb=document.getElementById('submitTbody');tb.innerHTML=submissions.length?submissions.slice(0,50).map(r=>'<tr><td>'+esc(dtOf(r).toLocaleString())+'</td><td>'+esc(r.store||'')+'</td><td>'+esc(r.brand||'')+'</td><td>'+esc(r.workType||'')+'</td><td>'+esc(r.status||'미확인')+'</td></tr>').join(''):'<tr><td colspan="5">제출내역이 없습니다.</td></tr>'}
+document.addEventListener('DOMContentLoaded',()=>{const n=localStorage.getItem('ravebicLeaderName'),p=localStorage.getItem('ravebicLeaderPin');if(n)leaderName.value=n;if(p)leaderPin.value=p;if(n&&p)rememberLeader.checked=true;leaderPin.addEventListener('keydown',e=>{if(e.key==='Enter')leaderLogin()})});
+</script>
+</body>
+</html>
