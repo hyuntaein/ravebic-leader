@@ -8,36 +8,81 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f4f7fb;font-family:Arial,'Malgun Gothic',sans-serif;color:#10213f}.wrap{max-width:980px;margin:0 auto;padding:18px}.card{background:#fff;border:1px solid #cfe0f8;border-radius:22px;padding:20px;margin:14px 0;box-shadow:0 8px 24px rgba(15,23,42,.06)}h1{margin:0;color:#0b3b78;font-size:30px}h2{margin:0 0 10px;color:#123f7a}.sub{color:#64748b;margin-top:6px;line-height:1.5}.login{max-width:430px;margin:70px auto}input{width:100%;padding:13px;border:1px solid #cbd5e1;border-radius:13px;font-size:16px;margin:6px 0}button{border:0;border-radius:13px;padding:13px 16px;font-weight:900;cursor:pointer}.blue{background:#2563eb;color:#fff}.green{background:#16a34a;color:#fff}.gray{background:#e5e7eb;color:#111827}.red{background:#ef4444;color:#fff}.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.badge{display:inline-block;padding:8px 11px;border-radius:999px;font-size:13px;font-weight:900;margin:4px}.badge.total{background:#e0f2fe;color:#075985}.badge.ok{background:#dcfce7;color:#166534}.badge.miss{background:#fee2e2;color:#991b1b}table{width:100%;border-collapse:collapse;font-size:14px}th,td{border-bottom:1px solid #e2e8f0;padding:10px;text-align:left;vertical-align:top}th{background:#eaf4ff;color:#0b3b77}.row-ok{background:#ecfdf5}.row-miss{background:#fef2f2}.msg{border:1px solid #fed7aa;background:#fff7ed;border-radius:14px;padding:12px;margin:8px 0;line-height:1.55}.hidden{display:none}.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}@media(max-width:760px){.wrap{padding:10px}h1{font-size:25px}table{font-size:12px}}
+/* RAVEBIC_LEADER_MONTHLY_PERFORMANCE_V1 */
 
-/* RAVEBIC_LEADER_PROGRESS_V1 */
-.leader-progress-card{
-  margin-top:12px;
+/* RAVEBIC_MONTHLY_PERFORMANCE_V1 */
+.rbc-leader-monthly-box{
+  margin:18px 0;
+  padding:16px;
+  border:1px solid #d7e6fb;
+  background:#f8fbff;
+  border-radius:18px;
 }
-.leader-progress-track{
-  width:100%;
-  height:24px;
-  background:#e5e7eb;
-  border-radius:999px;
-  overflow:hidden;
-}
-.leader-progress-fill{
-  height:100%;
-  width:0%;
-  border-radius:999px;
-  transition:width .2s ease;
-}
-.leader-progress-fill.danger{background:#ef4444}
-.leader-progress-fill.warn{background:#f97316}
-.leader-progress-fill.info{background:#2563eb}
-.leader-progress-fill.ok{background:#16a34a}
-.leader-progress-text{
+.rbc-leader-monthly-head{
   display:flex;
   justify-content:space-between;
+  align-items:center;
   gap:10px;
-  font-weight:900;
-  margin:8px 0;
   flex-wrap:wrap;
 }
+.rbc-leader-monthly-head h2{
+  margin:0;
+  color:#123f7a;
+  font-size:21px;
+}
+.rbc-monthly-btn{
+  background:#64748b!important;
+  color:#fff!important;
+  border:none!important;
+  border-radius:13px!important;
+  padding:12px 15px!important;
+  font-weight:900!important;
+  cursor:pointer!important;
+}
+.rbc-monthly-chip{
+  display:inline-block;
+  margin:4px;
+  padding:8px 11px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:13px;
+}
+.rbc-monthly-chip.total{background:#e0f2fe;color:#075985}
+.rbc-monthly-chip.ok{background:#dcfce7;color:#166534}
+.rbc-monthly-chip.late{background:#ffedd5;color:#9a3412}
+.rbc-monthly-chip.miss{background:#fee2e2;color:#991b1b}
+.rbc-monthly-chip.fix{background:#fef3c7;color:#92400e}
+.rbc-monthly-table-wrap{overflow:auto;margin-top:12px}
+.rbc-monthly-table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+.rbc-monthly-table th,.rbc-monthly-table td{border-bottom:1px solid #e2e8f0;padding:9px;text-align:left;vertical-align:middle}
+.rbc-monthly-table th{background:#eaf4ff;color:#0b3b77;white-space:nowrap}
+.rbc-monthly-danger{background:#fef2f2}
+.rbc-monthly-warn{background:#fff7ed}
+.rbc-monthly-ok{background:#ecfdf5}
+.rbc-monthly-rate{
+  display:inline-block;
+  min-width:54px;
+  text-align:center;
+  padding:5px 7px;
+  border-radius:999px;
+  font-weight:900;
+}
+.rbc-rate-good{background:#dcfce7;color:#166534}
+.rbc-rate-mid{background:#ffedd5;color:#9a3412}
+.rbc-rate-bad{background:#fee2e2;color:#991b1b}
+.rbc-monthly-rank{
+  margin-top:12px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+  gap:10px;
+}
+.rbc-rank-card{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:12px;
+}
+.rbc-rank-card b{color:#0b3b77}
 
 </style>
 </head>
@@ -64,13 +109,20 @@
   </div>
 
   
-<div class="card leader-progress-card">
-  <h2>내 실시간 진행률</h2>
-  <div id="leaderProgressSummary" class="leader-progress-text">
-    <span>진행률 계산 중...</span>
+<div class="card rbc-leader-monthly-box" id="leaderMonthlyBox">
+  <div class="rbc-leader-monthly-head">
+    <h2>내 월간 성과판</h2>
+    <div>
+      <button id="leaderMonthlyRefreshBtn" class="rbc-monthly-btn" type="button">월간 새로고침</button>
+      <button id="leaderMonthlyFoldBtn" class="rbc-monthly-btn" type="button">월간 접기</button>
+    </div>
   </div>
-  <div class="leader-progress-track">
-    <div id="leaderProgressFill" class="leader-progress-fill danger"></div>
+  <div style="margin-top:8px;color:#64748b;font-size:14px">
+    이번 달 본인 예정, 정상 제출, 지연 제출, 미제출, 정시 제출률, 보완요청을 표시합니다.
+  </div>
+  <div id="leaderMonthlySummary" style="margin-top:10px">월간 성과 계산 중...</div>
+  <div id="leaderMonthlyBody">
+    <div class="rbc-rank-card" style="margin-top:12px">월간 데이터를 불러오는 중...</div>
   </div>
 </div>
 
